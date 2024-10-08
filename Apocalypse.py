@@ -28,6 +28,9 @@ rock_moving_step: int = 10
 human_moving_step: int = 10
 update_frames_per_second_: int = 10
 rock_moving_counter_: int = 0
+# generate a rock every 15 seconds
+rock_generate_counter_: int = 15
+rock_health_: int = 20
 
 # colorcode
 colorR = 255
@@ -39,6 +42,7 @@ white = (255, 255, 255)
 yellow = (255, 255, 102)
 red = (255, 0, 0)
 green = (0, 255, 0)
+grey = (128, 128, 128)
 
 # initialize rock
 # list of rocks
@@ -50,7 +54,15 @@ score_ = 0
 prev_score_ = 0
 bullet_score_ = 0
 live_score_ = 1
-power_up_score_ = 0
+# power up the weapon. power up block is generated every 5 seconds.
+# pick one power_up block, power_up_score_ added by 1. 
+# when power_up_score_ reach multiplier of 5, weapon_power_up_level_ increased by 1
+# weapon_power_up_level_: 1 means normal, 2 means double bullet, 3 means triple bullet
+power_up_block_generate_counter_ = 5
+power_up_score_ = 1
+power_up_multiplier_ = 5
+weapon_power_up_level_ = 1
+
 # exit status
 exit_ = False
 
@@ -110,6 +122,7 @@ def draw_updated_rocks(rock_moving_counter, update_frames_per_second):
         rock_location = rock_location_[i]
         rockx = rock_location[0]
         rocky = rock_location[1]
+        rock_health = rock_location[4]
         if rock_moving_counter % update_frames_per_second == 0:
             if rockx > left:
                 rockx -= rock_moving_step
@@ -126,7 +139,7 @@ def draw_updated_rocks(rock_moving_counter, update_frames_per_second):
 
             rock_location_[i][0]=rockx
             rock_location_[i][1]=rocky
-        pygame.draw.rect(canvas, green, [rockx, rocky, rock_width_, rock_length_])
+        pygame.draw.rect(canvas, green if rock_health>rock_health_/2 else grey, [rockx, rocky, rock_width_, rock_length_])
 
 def generate_rock():
     while (True):
@@ -134,7 +147,8 @@ def generate_rock():
         rocky = round(random.randrange(0, (screen_width - rock_length_ - 1)) / 10.0) * 10.0
         if not hit_rock_by_rock(rockx, rocky, rock_location_) and not hit_human_by_rock(rockx, rocky):
             break
-    rock_location_.append([rockx, rocky, rock_width_, rock_length_])
+    random_rock_health = round(random.randrange(1, rock_health_))
+    rock_location_.append([rockx, rocky, rock_width_, rock_length_, random_rock_health])
 
 
 def rock_creator(create_new, rock_moving_counter, update_frames_per_second):
@@ -150,7 +164,7 @@ def rock_creator(create_new, rock_moving_counter, update_frames_per_second):
 def your_score():
     nowtime = time.time()
     score = int(nowtime - starttime)
-    value = score_style.render("Your score: " + str(score) + "    # of Bullets: " + str(bullet_score_) + "  # of lives: " + str(live_score_), True, yellow)
+    value = score_style.render("Your score: " + str(score) + "    #Bullets: " + str(bullet_score_) + "  #lives: " + str(live_score_) + "   #power: " + str(weapon_power_up_level_), True, yellow)
     canvas.blit(value, [0, 0])
     return score
 
@@ -178,7 +192,8 @@ while not exit_:
     # draw diamond
     pygame.draw.rect(canvas, blue, [bulletx, bullety, diamond_width_, diamond_length_])
     pygame.draw.rect(canvas, red, [livex, livey, diamond_width_, diamond_length_])
-    pygame.draw.rect(canvas, yellow, [powerx, powery, diamond_width_, diamond_length_ ])
+    if powerx != 0 and powery != 0:
+        pygame.draw.rect(canvas, yellow, [powerx, powery, diamond_width_, diamond_length_ ])
     pygame.draw.rect(canvas, yellow, [left, top, width, length])
     pygame.display.update()
     for event in pygame.event.get():
@@ -222,7 +237,8 @@ while not exit_:
             # draw diamond
             pygame.draw.rect(canvas, blue, [bulletx, bullety, diamond_width_, diamond_length_])
             pygame.draw.rect(canvas, red, [livex, livey, diamond_width_, diamond_length_])
-            pygame.draw.rect(canvas, yellow, [powerx, powery, diamond_width_, diamond_length_])
+            if powerx != 0 and powery != 0:
+                pygame.draw.rect(canvas, yellow, [powerx, powery, diamond_width_, diamond_length_])
             pygame.draw.rect(canvas, yellow, [left, top, width, width])
             pygame.display.update()
             # check whether we hit the rock
@@ -254,16 +270,25 @@ while not exit_:
                 live_sound = mixer.Sound('laser.wav')
                 live_sound.play()
             if (powerx >= left and powerx <= (left + width)) and (powery >= top and powery <= (top + width)):
-                print("Power up!!")
-                powerx, powery = locate_diamond()
+                print("accumulating power up")
+                powerx, powery = 0, 0
                 power_up_score_ += 1
+                if power_up_score_ % power_up_multiplier_ == 0:
+                    print("Power up!!")
+                    weapon_power_up_level_ += 1
                 power_sound = mixer.Sound('laser.wav')
                 power_sound.play()
     # draw new rock 
-    if score_ != 0 and score_ % 15 == 0 and score_ != prev_score_:
+    if score_ != 0 and (score_ % rock_generate_counter_ == 0 or score_ % power_up_block_generate_counter_ == 0) and score_ != prev_score_:
         # without comparing prev_score and score_, multiple rock_creator(True) will be called and multiple new rocks are created. because the update_frames_per_second_ = 10, which means we will reach this location 10 times when score_ is multiplier of 20
         prev_score_ = score_
-        rock_creator(True, rock_moving_counter_, update_frames_per_second_)
+        if score_ % rock_generate_counter_ == 0:
+            # generate a new rock
+            rock_creator(True, rock_moving_counter_, update_frames_per_second_)
+        elif score_ % power_up_block_generate_counter_ == 0:
+            # generate a new power up block
+            if powerx == 0 and powery == 0:
+                powerx, powery = locate_diamond()
     clock.tick(update_frames_per_second_)
 
 pygame.quit()
