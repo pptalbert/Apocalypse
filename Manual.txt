@@ -1,8 +1,14 @@
 You are the circle. The last one.
+ =============== How to play ==========
 WASD to move
-collect bullets, power ups, and extra lives. They are represented by blue, yellow, and red squares, respectively.
+Collect bullets, power ups, and extra lives. They are represented by blue, yellow, and red squares, respectively.
+
 Every 5 power ups, you get a stronger weapon. 
+
 You are infected if a zombie catches you or you run into the border.
+
 Use your cursor to aim, or use the "R" key to aim. Press space to shoot.
+
 Zombies can be weak, strong, and bloodlust, represented by the colours grey, green, and blood red, respectively.
+
 Survive, and earn the highest score.
