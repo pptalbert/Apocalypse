@@ -36,11 +36,13 @@ zombie_length_: int = length
 diamond_width_ = width/2
 diamond_length_= length/2
 zombie_moving_step: int = 10
+boss_zombie_health_: int = 100
 human_moving_step: int = 10
 update_frames_per_second_: int = 10
 zombie_moving_counter_: int = 0
 # generate a zombie every 15 seconds
 zombie_generate_counter_: int = 15
+boss_generate_counter_: int = 100
 zombie_health_: int = 20
 
 # colorcode
@@ -54,6 +56,7 @@ yellow = (255, 255, 102)
 red = (255, 0, 0)
 green = (0, 255, 0)
 grey = (128, 128, 128)
+purple = (255, 0, 255)
 
 # initialize zombie
 # list of zombies with parameters
@@ -163,25 +166,42 @@ def draw_updated_zombies(zombie_moving_counter, update_frames_per_second):
 
             zombie_location_[i][0]=zombiex
             zombie_location_[i][1]=zombiey
-        pygame.draw.rect(canvas, green if zombie_health>zombie_health_/2 else grey, [zombiex, zombiey, zombie_width_, zombie_length_])
+        zombie_color = green if zombie_health>zombie_health_/2 else grey
+        if zombie_health <= 10 and zombie_health > 0:
+            zombie_color = grey
+        elif zombie_health > 10 and zombie_health <= 20:
+            zombie_color = green
+        elif zombie_health <= 100 and zombie_health > 20:
+            zombie_color = purple
+        else: 
+            zombie_color = red
+        pygame.draw.rect(canvas, zombie_color, [zombiex, zombiey, zombie_width_, zombie_length_])
 
-def generate_zombie():
+def generate_zombie(health: int=0):
     while (True):
         zombiex = round(random.randrange(0, (screen_width - zombie_width_ - 1)) / 10.0) * 10.0
         zombiey = round(random.randrange(0, (screen_width - zombie_length_ - 1)) / 10.0) * 10.0
         if not hit_zombie_by_zombie(zombiex, zombiey, zombie_location_) and not hit_human_by_zombie(zombiex, zombiey):
             break
-    random_zombie_health = round(random.randrange(1, zombie_health_))
-    zombie_location_.append([zombiex, zombiey, zombie_width_, zombie_length_, random_zombie_health])
+    if not health:
+        new_zombie_health = round(random.randrange(1, zombie_health_))
+    else:
+        new_zombie_health = health
+    zombie_location_.append([zombiex, zombiey, zombie_width_, zombie_length_, new_zombie_health])
 
 
-def zombie_creator(create_new, zombie_moving_counter, update_frames_per_second):
-    # generate zombie
-    # if zombie_location is empty, draw the first zombie.
-    # every time, redraw the zombie in the zombie_location.
-    # otherwise, wait until reaching score level and draw the next zombie and put it in the zombie_location.
+"""
+generate zombie
+if zombie_location is empty, draw the first zombie.
+every time, redraw the zombie in the zombie_location.
+otherwise, wait until reaching score level and draw the next zombie and put it in the zombie_location.
+@ create_new: whether to create a new zombie
+@ zombie_moving_counter: global counter to decided when to move the zombie towards human
+@ update_frames_per_second: the interval of moving zombie.
+"""
+def zombie_creator(create_new, zombie_moving_counter, update_frames_per_second, health: int = 0):
     if not zombie_location_ or create_new:
-        generate_zombie()
+        generate_zombie(health)
     draw_updated_zombies(zombie_moving_counter, update_frames_per_second)
 
 
@@ -191,6 +211,7 @@ def your_score():
     value = score_style.render("Your score: " + str(score) + "    #Bullets: " + str(bullet_score_) + "  #lives: " + str(live_score_) + "   #power: " + str(weapon_power_up_level_), True, yellow)
     canvas.blit(value, [0, 0])
     return score
+
 
 
 def message(msg, color):
@@ -354,7 +375,12 @@ while not exit_:
             # draw current zombies
             zombie_creator(False, zombie_moving_counter_, update_frames_per_second_)
             pygame.display.update()
-            
+
+     
+    if score_ >= boss_generate_counter_ and (score_ % boss_generate_counter_ == 0) and score_ != prev_score_ :
+        prev_score_ = score_
+        zombie_creator(True, zombie_moving_counter_, update_frames_per_second_, boss_zombie_health_)
+
     # draw new zombie 
     if score_ != 0 and (score_ % zombie_generate_counter_ == 0 or score_ % power_up_block_generate_counter_ == 0) and score_ != prev_score_:
         # without comparing prev_score and score_, multiple zombie_creator(True) will be called and multiple new zombies are created. because the update_frames_per_second_ = 10, which means we will reach this location 10 times when score_ is multiplier of 20
@@ -366,6 +392,7 @@ while not exit_:
             # generate a new power up block
             if powerx == 0 and powery == 0:
                 powerx, powery = locate_diamond()
+        
     clock.tick(update_frames_per_second_)
 
 pygame.quit()
